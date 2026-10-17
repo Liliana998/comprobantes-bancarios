@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleusercontent.com; connect-src https://script.google.com https://script.googleusercontent.com https://accounts.google.com/gsi/; frame-src https://accounts.google.com/gsi/; base-uri 'none'; form-action 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#604A33">
+<title>Archivo de Comprobantes</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@500;600&display=swap">
+<style>
+  /* Archivo de Comprobantes Bancarios - identidad visual v1.1 (paleta tierra) */
+  :root {
+    --nogal: #604A33;  --caramelo: #765838; --terracota: #BE8C6B;
+    --crema: #ECDFCD;  --fondo: #F7F1E8;    --papel: #FFFCF7;
+    --texto: #2B2520;  --piedra: #686961;   --topo: #A4927A;
+    --ok: #4E5B4B;     --ok-bg: #E4E9E1;
+    --pend: #7A5530;   --pend-bg: #F5E6D8;
+    --rech: #7E4236;   --rech-bg: #F1E1DC;
+    --nd: #55564F;     --nd-bg: #EAE6DE;
+    --dup: #5F5C3A;    --dup-bg: #ECEBDC;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--fondo); }
+  body { margin: 0; background: var(--fondo); color: var(--texto); font-size: 16px;
+         font-family: Inter, system-ui, sans-serif; -webkit-text-size-adjust: 100%;
+         -webkit-tap-highlight-color: transparent;
+         padding: env(safe-area-inset-top) 0 0; }
+  main { max-width: 560px; margin: 0 auto; padding-bottom: 32px; }
+  .oculto { display: none !important; }
+  button { cursor: pointer; }
+
+  /* Encabezado */
+  .cab { padding: 12px 18px 8px; display: flex; align-items: center; gap: 10px; }
+  .cab .txt { flex: 1; min-width: 0; }
+  .sello { width: 34px; height: 34px; border-radius: 50%; flex: none;
+           border: 1.5px solid var(--terracota); color: var(--terracota);
+           display: grid; place-items: center; font: 500 14px Lora, Georgia, serif; }
+  .titulo { font: 500 19px/1.1 Lora, Georgia, serif; color: var(--nogal); }
+  .sub { font-size: 12px; color: var(--piedra); margin-top: 2px; }
+  .candado { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--crema);
+             background: var(--papel); display: grid; place-items: center; padding: 0; }
+
+  /* Pantallas de acceso */
+  .acceso { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; padding: 32px 24px; text-align: center; }
+  .acceso .sello { width: 64px; height: 64px; font-size: 24px; border-width: 2px; }
+  .acceso h1 { font: 500 24px/1.2 Lora, Georgia, serif; color: var(--nogal); margin: 18px 0 6px; }
+  .acceso p { color: var(--piedra); font-size: 15px; margin: 0 0 22px; max-width: 320px; }
+  #botonGoogle { min-height: 44px; }
+  .aviso { margin: 18px auto 0; max-width: 340px; padding: 12px 14px; border-radius: 12px;
+           background: var(--pend-bg); color: var(--pend); font-size: 14.5px; }
+  .enlace { background: none; border: none; color: var(--caramelo); font: 500 14px Inter, sans-serif;
+            text-decoration: underline; margin-top: 18px; padding: 10px; }
+
+  /* PIN */
+  .puntos { display: flex; gap: 12px; justify-content: center; margin: 4px 0 10px; }
+  .puntos span { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--nogal); }
+  .puntos span.lleno { background: var(--nogal); }
+  .puntos.error { animation: temblor .35s; }
+  .puntos.error span { border-color: var(--rech); }
+  @keyframes temblor { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-8px); }
+                       75% { transform: translateX(8px); } }
+  #pinMensaje { min-height: 22px; font-size: 14px; color: var(--rech); margin-bottom: 14px; }
+  .teclado { display: grid; grid-template-columns: repeat(3, 76px); gap: 14px 22px; }
+  .teclado button { width: 76px; height: 76px; border-radius: 50%; border: 1px solid var(--crema);
+                    background: var(--papel); color: var(--nogal);
+                    font: 500 28px Lora, Georgia, serif; }
+  .teclado button:active { background: var(--crema); }
+  .teclado button.vacio { visibility: hidden; }
+  .teclado button.borrar { border: none; background: transparent; font: 500 15px Inter, sans-serif; }
+  .teclado button:disabled { opacity: .45; }
+
+  /* Buscador */
+  .buscador { margin: 2px 16px 4px; background: var(--papel); border-radius: 26px;
+              border: 1px solid var(--crema); display: flex; align-items: center;
+              gap: 8px; padding: 0 6px 0 16px; height: 52px; }
+  .buscador input { flex: 1; min-width: 0; border: none; outline: none;
+                    background: transparent; font: 16.5px Inter, system-ui, sans-serif;
+                    color: var(--texto); }
+  .buscador input::placeholder { color: var(--topo); }
+  .buscador button { border: none; background: var(--nogal); color: #fff; height: 40px;
+                     border-radius: 20px; padding: 0 18px;
+                     font: 500 15px Inter, sans-serif; }
+  #mensaje { font-size: 13px; color: var(--piedra); margin: 6px 20px 0; }
+
+  /* Lista tipo libro de registro */
+  .mes { font-size: 11.5px; letter-spacing: 1.6px; text-transform: uppercase;
+         color: var(--caramelo); font-weight: 600; margin: 12px 20px 6px; }
+  .lista { background: var(--papel); margin: 0 16px; border-radius: 16px;
+           border: 1px solid var(--crema); overflow: hidden; }
+  .mov { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px;
+         align-items: center; padding: 14px; min-height: 72px; cursor: pointer;
+         border-bottom: 1px solid var(--crema); }
+  .mov:last-child { border-bottom: none; }
+  .mov:active { background: var(--fondo); }
+  .dia { text-align: center; line-height: 1; }
+  .dia b { display: block; font: 500 22px Lora, Georgia, serif; color: var(--nogal); }
+  .dia span { font-size: 11px; color: var(--piedra); text-transform: uppercase;
+              letter-spacing: .8px; }
+  .quien { font-size: 15.5px; font-weight: 500; line-height: 1.25; }
+  .quien i { font-style: normal; font-weight: 400; color: var(--piedra);
+             font-size: 12px; }
+  .chips { margin-top: 5px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; font-weight: 500;
+          display: inline-flex; align-items: center; gap: 5px; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%;
+                  background: currentColor; }
+  .completada { color: var(--ok); background: var(--ok-bg); }
+  .pendiente { color: var(--pend); background: var(--pend-bg); }
+  .rechazada { color: var(--rech); background: var(--rech-bg); }
+  .nodeterminada { color: var(--nd); background: var(--nd-bg); }
+  .duplicado, .revisar { color: var(--dup); background: var(--dup-bg); }
+  .monto { text-align: right; }
+  .monto b { font: 600 17px Lora, Georgia, serif; font-variant-numeric: tabular-nums;
+             white-space: nowrap; }
+  .monto span { display: block; font-size: 11px; color: var(--piedra);
+                letter-spacing: .8px; margin-top: 2px; }
+
+  /* Comprobante */
+  .barra { display: flex; align-items: center; gap: 10px; padding: 16px 12px 6px; }
+  .volver { width: 44px; height: 44px; border-radius: 50%; background: var(--papel);
+            border: 1px solid var(--crema); display: grid; place-items: center;
+            padding: 0; }
+  .barra span { font-size: 14px; color: var(--piedra); }
+  .resumen { text-align: center; padding: 6px 20px 12px; }
+  .moneda { font-size: 12px; letter-spacing: 1.4px; color: var(--caramelo);
+            font-weight: 600; text-transform: uppercase; }
+  .importe { font: 600 36px Lora, Georgia, serif; color: var(--nogal);
+             font-variant-numeric: tabular-nums; }
+  .fecha { font-size: 14px; color: var(--piedra); margin: 4px 0 10px; }
+  .alerta { margin: 10px 16px; padding: 12px 14px; border-radius: 12px;
+            background: var(--pend-bg); color: var(--pend); font-size: 14.5px; }
+  .hoja { margin: 6px 22px 0; background: #fff; border-radius: 6px; padding: 10px;
+          box-shadow: 0 10px 28px rgba(96,74,51,.16), 0 1px 3px rgba(96,74,51,.12); }
+  .hoja img { display: block; width: 100%; height: auto; border-radius: 3px;
+              cursor: zoom-in; }
+  .ampliar { text-align: center; font-size: 12.5px; color: var(--piedra);
+             margin: 8px 0 0; }
+  /* Visor a pantalla completa para leer los detalles */
+  .visor { position: fixed; inset: 0; z-index: 20; background: #1E1813;
+           display: flex; flex-direction: column; }
+  .visor .lienzo { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; }
+  .visor img { display: block; width: 100%; height: auto; margin: 0 auto; }
+  .visor .controles { display: flex; gap: 10px; padding: 12px 16px 18px;
+                      background: #1E1813; }
+  .visor button { flex: 1; height: 52px; border-radius: 14px; border: none;
+                  background: #3A2F26; color: #F7F1E8; font: 600 18px Inter, sans-serif; }
+  .visor button.cerrar { flex: 2; background: var(--crema); color: var(--nogal);
+                         font-size: 16px; }
+  .ficha { margin: 20px 16px 0; background: var(--papel); border-radius: 16px;
+           border: 1px solid var(--crema); padding: 4px 16px; }
+  .dato { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0;
+          border-bottom: 1px solid var(--crema); }
+  .dato:last-child { border-bottom: none; }
+  .dato .k { font-size: 11.5px; letter-spacing: 1.1px; text-transform: uppercase;
+             color: var(--piedra); padding-top: 2px; flex: none; max-width: 42%; }
+  .dato .v { text-align: right; font-size: 15px; font-weight: 500;
+             word-break: break-word; }
+  .conf { display: flex; gap: 3px; justify-content: flex-end; align-items: center;
+          margin-top: 4px; font-size: 11px; color: var(--piedra); font-weight: 400; }
+  .conf s { width: 14px; height: 4px; border-radius: 2px; background: var(--crema); }
+  .conf s.on { background: var(--terracota); }
+  details { margin: 14px 16px 0; background: var(--papel); border-radius: 12px;
+            border: 1px solid var(--crema); padding: 12px 14px; font-size: 14px; }
+  details pre { white-space: pre-wrap; font-size: 13px; color: var(--piedra); }
+  .espacio { height: 110px; }
+  .acciones { position: fixed; left: 0; right: 0; bottom: 0;
+              padding: 12px 16px calc(18px + env(safe-area-inset-bottom));
+              display: grid; grid-template-columns: 1fr 60px; gap: 10px;
+              max-width: 560px; margin: 0 auto;
+              background: linear-gradient(to top, var(--fondo) 70%,
+                                          rgba(247,241,232,0)); }
+  .acciones.sola { grid-template-columns: 1fr; }
+  .btn { height: 56px; border-radius: 16px; display: flex; align-items: center;
+         justify-content: center; gap: 10px; font: 600 16.5px Inter, sans-serif;
+         text-decoration: none; border: none; }
+  .btn.pri { background: var(--nogal); color: #fff;
+             box-shadow: 0 6px 16px rgba(96,74,51,.28); }
+  .btn.sec { background: var(--papel); border: 1px solid var(--crema);
+             color: var(--nogal); }
+  #resultadoCompartir { margin: 10px 16px 0; }
+  .cargando { text-align: center; color: var(--piedra); font-size: 14px; margin-top: 14px; }
+</style>
+</head>
+<body>
+<main>
+
+  <!-- ACCESO 1: IDENTIDAD DE GOOGLE -->
+  <section id="vistaGoogle" class="acceso oculto">
+    <div class="sello">AC</div>
+    <h1>Archivo de Comprobantes</h1>
+    <p>Inicie sesión con su cuenta de Google para continuar.</p>
+    <div id="botonGoogle"></div>
+    <div id="googleMensaje" class="aviso oculto"></div>
+  </section>
+
+  <!-- ACCESO 2: PIN -->
+  <section id="vistaPin" class="acceso oculto">
+    <div class="sello">AC</div>
+    <h1 id="pinTitulo">Ingrese su PIN</h1>
+    <p id="pinTexto">Clave de acceso de 7 dígitos.</p>
+    <div class="puntos" id="puntos"></div>
+    <div id="pinMensaje" role="alert"></div>
+    <div class="teclado" id="teclado"></div>
+    <button class="enlace oculto" id="btnOtraCuenta" type="button">Usar otra cuenta de Google</button>
+  </section>
+
+  <!-- PANTALLA 1: BUSCAR -->
+  <section id="vistaBuscar" class="oculto">
+    <div class="cab">
+      <div class="sello">AC</div>
+      <div class="txt">
+        <div class="titulo">Archivo de Comprobantes</div>
+        <div class="sub" id="contador">Consulta privada</div>
+      </div>
+      <button class="candado" id="btnBloquear" type="button" aria-label="Bloquear">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#604A33"
+             stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/>
+          <path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      </button>
+    </div>
+    <form class="buscador" id="formBuscar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#686961"
+           stroke-width="2"><circle cx="11" cy="11" r="7"/>
+        <path d="m20 20-3.5-3.5"/></svg>
+      <input id="texto" type="search" autocomplete="off" maxlength="200"
+             placeholder="Nombre, importe o ref.">
+      <button type="submit">Buscar</button>
+    </form>
+    <div id="mensaje">Cargando...</div>
+    <div id="resultados"></div>
+  </section>
+
+  <!-- PANTALLA 2: COMPROBANTE -->
+  <section id="vistaDetalle" class="oculto">
+    <div class="barra">
+      <button class="volver" id="btnVolver" aria-label="Volver">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#604A33"
+             stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <span>Volver a la b&uacute;squeda</span>
+    </div>
+    <div id="detalleContenido"></div>
+  </section>
+
+  <!-- ARRANQUE -->
+  <section id="vistaInicio" class="acceso">
+    <div class="sello">AC</div>
+    <p class="cargando" id="inicioMensaje">Abriendo...</p>
+  </section>
+
+</main>
+<script src="config.js"></script>
+<script src="app.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</body>
+</html>
