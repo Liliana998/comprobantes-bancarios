@@ -1,5 +1,6 @@
 /**
- * Archivo de Comprobantes Bancarios - aplicacion instalable (Etapa 3) v1
+ * Archivo de Comprobantes Bancarios - aplicacion instalable (Etapa 3) v2
+ * v2: asignar el beneficiario cuando el comprobante no lo trae.
  * Interfaz trasladada de Buscador.html v3 (identidad visual v1.1).
  * Acceso: identidad de Google (una vez por dispositivo) + PIN de 7 digitos
  * (cada vez que se abre). No guarda comprobantes, datos, PIN ni sesiones en
@@ -389,6 +390,9 @@
   var mensaje = $('mensaje');
   var contenido = $('detalleContenido');
   var archivoActual = null;
+  var detalleActual = null;
+  var ultimaConsulta = '';
+  var listaDesactualizada = false;
 
   var NOMBRES_ESTADO = {
     'completada': 'Completada',
@@ -419,6 +423,8 @@
   }
 
   function buscar(consulta) {
+    ultimaConsulta = consulta;
+    listaDesactualizada = false;
     mensaje.textContent = 'Buscando...';
     resultados.innerHTML = '';
     api('buscar', { consulta: consulta }).then(function (r) {
@@ -466,7 +472,8 @@
       var quien = el('div', 'quien', c.beneficiario || 'Beneficiario no identificado');
       if (c.beneficiario) {
         quien.appendChild(document.createTextNode(' '));
-        quien.appendChild(el('i', '', 'sugerido'));
+        quien.appendChild(el('i', c.origenBeneficiario === 'asignado' ? 'propio' : '',
+            c.origenBeneficiario === 'asignado' ? 'asignado por usted' : 'sugerido'));
       }
       centro.appendChild(quien);
       var chips = el('div', 'chips');
@@ -527,6 +534,7 @@
   }
 
   function mostrarDetalle(d) {
+    detalleActual = d;
     contenido.innerHTML = '';
     var imp = partirImporte(d.importe);
     var f = partirFecha(d.fecha);
@@ -565,8 +573,17 @@
     }
     contenido.appendChild(el('div', '', '')).id = 'resultadoCompartir';
 
+    if (!d.beneficiario || d.origenBeneficiario === 'asignado') {
+      contenido.appendChild(bloqueAsignar(d));
+    }
+
     var ficha = el('div', 'ficha');
-    dato(ficha, 'Beneficiario', d.beneficiario, d.confianzaBeneficiario);
+    if (d.origenBeneficiario === 'asignado') {
+      dato(ficha, 'Beneficiario', d.beneficiario);
+      ficha.lastChild.querySelector('.v').appendChild(el('div', 'conf', 'asignado por usted'));
+    } else {
+      dato(ficha, 'Beneficiario', d.beneficiario, d.confianzaBeneficiario);
+    }
     dato(ficha, 'Banco origen', d.bancoOrigen, d.confianzaBancoOrigen);
     dato(ficha, 'Banco destino', d.bancoDestino);
     dato(ficha, 'Concepto', d.concepto, d.confianzaConcepto);
@@ -611,6 +628,92 @@
     }
     acciones.appendChild(drive);
     contenido.appendChild(acciones);
+  }
+
+  // Asignar o cambiar el beneficiario. Solo se guarda el nombre en la hoja
+  // "Beneficiarios"; el comprobante y sus datos automaticos no cambian.
+  function bloqueAsignar(d) {
+    var caja = el('div', 'asignar');
+    var abrirBtn = el('button', d.beneficiario ? 'enlace' : 'btn sec ancho',
+        d.beneficiario ? 'Cambiar beneficiario' : 'Asignar beneficiario');
+    abrirBtn.type = 'button';
+    var form = el('form', 'oculto');
+    var etiqueta = el('label', 'k', 'Nombre del beneficiario');
+    etiqueta.setAttribute('for', 'nombreBen');
+    var entrada = el('input');
+    entrada.id = 'nombreBen';
+    entrada.type = 'text';
+    entrada.maxLength = 80;
+    entrada.autocomplete = 'off';
+    entrada.setAttribute('autocapitalize', 'words');
+    entrada.value = d.origenBeneficiario === 'asignado' ? d.beneficiario : '';
+    form.appendChild(etiqueta);
+    form.appendChild(entrada);
+    if (d.recordarReceptor) {
+      form.appendChild(el('p', 'nota', 'Se aplicará también a los demás pagos ' +
+          'a este teléfono y cédula.'));
+    }
+    if (d.origenBeneficiario === 'asignado') {
+      form.appendChild(el('p', 'nota', 'Deje el campo vacío y guarde para quitarlo.'));
+    }
+    var aviso = el('p', 'error');
+    var botones = el('div', 'botones');
+    var cancelar = el('button', 'btn sec', 'Cancelar');
+    cancelar.type = 'button';
+    var guardar = el('button', 'btn pri', 'Guardar');
+    guardar.type = 'submit';
+    botones.appendChild(cancelar);
+    botones.appendChild(guardar);
+    form.appendChild(aviso);
+    form.appendChild(botones);
+    caja.appendChild(abrirBtn);
+    caja.appendChild(form);
+
+    abrirBtn.addEventListener('click', function () {
+      abrirBtn.classList.add('oculto');
+      form.classList.remove('oculto');
+      entrada.focus();
+    });
+    cancelar.addEventListener('click', function () {
+      form.classList.add('oculto');
+      abrirBtn.classList.remove('oculto');
+      aviso.textContent = '';
+      entrada.value = d.origenBeneficiario === 'asignado' ? d.beneficiario : '';
+    });
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var nombre = entrada.value.replace(/\s+/g, ' ').trim();
+      if (!nombre && d.origenBeneficiario !== 'asignado') {
+        aviso.textContent = 'Escriba el nombre.';
+        return;
+      }
+      guardar.disabled = true;
+      cancelar.disabled = true;
+      aviso.textContent = 'Guardando...';
+      api('asignarBeneficiario', { id: d.id, nombre: nombre }).then(function (r) {
+        guardar.disabled = false;
+        cancelar.disabled = false;
+        if (r.ok) {
+          var x = r.datos;
+          d.beneficiario = x.beneficiario;
+          d.origenBeneficiario = x.origenBeneficiario;
+          d.confianzaBeneficiario = x.confianzaBeneficiario;
+          d.revision = x.revision;
+          d.revisar = x.revisar;
+          listaDesactualizada = true;
+          var y = window.scrollY;
+          mostrarDetalle(d);
+          window.scrollTo(0, y);
+          return;
+        }
+        if (r.error === 'interno') {
+          aviso.textContent = r.mensaje || 'No se pudo guardar.';
+          return;
+        }
+        manejarError(r, function (t) { aviso.textContent = t; });
+      });
+    });
+    return caja;
   }
 
   // Visor: imagen completa ampliable (100%, 200%, 300%). Solo muestra.
@@ -683,6 +786,8 @@
     mostrar('vistaBuscar');
     contenido.innerHTML = '';
     archivoActual = null;
+    detalleActual = null;
+    if (listaDesactualizada) buscar(ultimaConsulta);
   }
 
   /* ====================== NAVEGACION Y BLOQUEO ====================== */
