@@ -1,6 +1,8 @@
 /**
  * Archivo de Comprobantes Bancarios - aplicacion instalable (Etapa 3) v2
  * v2: asignar el beneficiario cuando el comprobante no lo trae.
+ * v3: recordar este dispositivo. Tras entrar con Google + PIN se guarda una
+ *     llave aleatoria del dispositivo; despues basta el PIN (30 dias).
  * Interfaz trasladada de Buscador.html v3 (identidad visual v1.1).
  * Acceso: identidad de Google (una vez por dispositivo) + PIN de 7 digitos
  * (cada vez que se abre). No guarda comprobantes, datos, PIN ni sesiones en
@@ -24,8 +26,30 @@
     esperaToken: null,   // promesa pendiente de renovar identidad
     ocultoDesde: 0,
     vistaPrevia: null,   // pantalla a la que volver tras el PIN
-    googleIniciado: false
+    googleIniciado: false,
+    llave: null          // llave del dispositivo (unico dato guardado aqui)
   };
+
+  /* ====================== LLAVE DEL DISPOSITIVO ====================== */
+
+  var CLAVE_LLAVE = 'ac_llave_dispositivo';
+
+  function leerLlave() {
+    try {
+      var v = localStorage.getItem(CLAVE_LLAVE);
+      return /^[a-f0-9]{64}$/.test(v || '') ? v : null;
+    } catch (e) { return null; }
+  }
+
+  function guardarLlave(v) {
+    est.llave = v;
+    try { localStorage.setItem(CLAVE_LLAVE, v); } catch (e) { /* sin almacenamiento */ }
+  }
+
+  function olvidarLlave() {
+    est.llave = null;
+    try { localStorage.removeItem(CLAVE_LLAVE); } catch (e) { /* nada */ }
+  }
 
   function $(id) { return document.getElementById(id); }
 
@@ -152,6 +176,29 @@
     }, 2500);
   }
 
+  // Camino con Google (primera vez, llave vencida o anulada, otra cuenta).
+  function iniciarFlujoGoogle(mensaje) {
+    est.sesion = null;
+    if (est.googleIniciado) {
+      pantallaGoogle(mensaje);
+      try { google.accounts.id.prompt(); } catch (e) { /* nada */ }
+      return;
+    }
+    $('inicioMensaje').textContent = 'Verificando su cuenta...';
+    mostrar('vistaInicio');
+    if (mensaje) setTimeout(function () {
+      if (!est.idToken && vistaActual() !== 'vistaPin') pantallaGoogle(mensaje);
+    }, 2600);
+    if (window.google && google.accounts) iniciarGoogle();
+    else window.onGoogleLibraryLoad = iniciarGoogle;
+    setTimeout(function () {
+      if (!est.googleIniciado) {
+        $('inicioMensaje').textContent = 'No se pudo conectar con Google. ' +
+            'Revise su internet y vuelva a abrir la aplicación.';
+      }
+    }, 12000);
+  }
+
   function pantallaGoogle(mensaje) {
     var aviso = $('googleMensaje');
     aviso.textContent = mensaje || '';
@@ -230,8 +277,9 @@
     $('btnOtraCuenta').addEventListener('click', function () {
       est.idToken = null;
       est.sesion = null;
+      olvidarLlave();
       try { google.accounts.id.disableAutoSelect(); } catch (e) { /* nada */ }
-      pantallaGoogle();
+      iniciarFlujoGoogle();
     });
   }
 
@@ -325,10 +373,15 @@
   function enviarPin(accion, pin) {
     est.enviandoPin = true;
     $('pinMensaje').textContent = 'Verificando...';
-    api(accion, { pin: pin }).then(function (r) {
+    var conLlave = accion === 'entrar' && est.llave && !est.idToken;
+    var peticion = conLlave
+        ? api('entrarDispositivo', { pin: pin, llave: est.llave })
+        : api(accion, { pin: pin, recordar: true });
+    peticion.then(function (r) {
       est.enviandoPin = false;
       est.pin = '';
       if (r.ok && r.sesion) {
+        if (r.llave) guardarLlave(r.llave);
         est.sesion = r.sesion;
         est.pinCreado = true;
         est.pinPrimero = null;
@@ -351,6 +404,9 @@
         abrirPin('Ya existe un PIN. Ingréselo.');
       } else if (r.error === 'formatoPin') {
         errorPin('El PIN debe tener 7 dígitos.');
+      } else if (r.error === 'llave') {
+        olvidarLlave();
+        iniciarFlujoGoogle('Por seguridad, vuelva a iniciar sesión con Google.');
       } else if (!manejarError(r, errorPin)) {
         /* mensaje ya mostrado */
       }
@@ -832,14 +888,12 @@
         '(faltan la dirección del servicio y el ID de cliente).';
     return;
   }
-  $('inicioMensaje').textContent = 'Verificando su cuenta...';
-  window.onGoogleLibraryLoad = iniciarGoogle;
-  if (window.google && google.accounts) iniciarGoogle();
-  // Si la biblioteca de Google no carga (sin internet), se informa.
-  setTimeout(function () {
-    if (!est.googleIniciado) {
-      $('inicioMensaje').textContent = 'No se pudo conectar con Google. ' +
-          'Revise su internet y vuelva a abrir la aplicación.';
-    }
-  }, 12000);
+  // Dispositivo recordado: directo al PIN, sin pasar por Google.
+  est.llave = leerLlave();
+  if (est.llave) {
+    est.pinCreado = true;
+    abrirPin();
+  } else {
+    iniciarFlujoGoogle();
+  }
 })();
