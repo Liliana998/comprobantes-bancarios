@@ -3,7 +3,7 @@
   "short_name": "Comprobantes",
   "description": "Consulta privada de comprobantes bancarios.",
   "lang": "es-MX",
-  "id": "/comprobantes-bancarios/",
+  "id": "/comprobantes-bancarios/?app=ac3",
   "start_url": "/comprobantes-bancarios/",
   "scope": "/comprobantes-bancarios/",
   "display": "standalone",

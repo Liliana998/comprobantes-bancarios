@@ -1,7 +1,7 @@
 // Archivo de Comprobantes - service worker minimo.
 // Solo permite instalar la aplicacion. No guarda comprobantes, datos,
 // busquedas ni respuestas del servicio: todo se pide siempre a internet.
-const VERSION_AC = 'ac-v2';
+const VERSION_AC = 'ac-v3';
 
 self.addEventListener('install', function () { self.skipWaiting(); });
 self.addEventListener('activate', function (e) {
